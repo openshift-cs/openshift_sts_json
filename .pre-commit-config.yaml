@@ -1,0 +1,39 @@
+exclude: '\.idea/.*'
+repos:
+- repo: https://github.com/psf/black
+  rev: 21.5b1
+  hooks:
+  - id: black
+- repo: https://github.com/asottile/reorder_python_imports
+  rev: v2.5.0
+  hooks:
+  - id: reorder-python-imports
+- repo: local
+  hooks:
+  - id: rename_yml
+    name: Enforce "*.yaml" files
+    entry: Enforces a YAML naming scheme of "*.yaml". Rename any "*.yml" files
+    language: fail
+    files: '.*\.yml$'
+  - id: pylint
+    name: pylint
+    entry: poetry run python -m pylint.__main__
+    language: system
+    types:
+    - python
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v3.4.0
+  hooks:
+  - id: check-executables-have-shebangs
+  - id: check-json
+  - id: check-merge-conflict
+  - id: check-toml
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
+  - id: trailing-whitespace
+    exclude: '.*.md'
+- repo: https://gitlab.com/pycqa/flake8
+  rev: 3.9.2
+  hooks:
+  - id: flake8

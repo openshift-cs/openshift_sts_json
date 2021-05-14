@@ -1,0 +1,21 @@
+# Misc files
+.DS_Store
+
+# Python files
+__pycache__/
+*.py[cod]
+
+# local env files
+.env.local
+.env.*.local
+.env.prod
+.env.*.prod
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

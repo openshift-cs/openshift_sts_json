@@ -1,0 +1,5 @@
+# Automatically fix file endings on all files
+*               text=auto
+
+# Ignore certain "noisy" files in diffs
+poetry.lock     -diff

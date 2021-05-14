@@ -1,0 +1,35 @@
+[tool.black]
+line-length = 120
+target_version = ["py39"]
+exclude = """
+/(
+    \\.git
+  | \\.mypy_cache
+  | \\.tox
+  | _build
+  | build
+  | dist
+)/
+"""
+
+[tool.poetry]
+name = "openshift_sts_json"
+version = "0.1.0"
+description = "Static JSON generator for OpenShift STS policies"
+authors = ["Will Gordon <wgordon@redhat.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+uvicorn = {extras = ["standard"], version = "^0.13.4"}
+gunicorn = "^20.1.0"
+fastapi = {extras = ["ujson", "jinja2"], version = "^0.65.1"}
+
+[tool.poetry.dev-dependencies]
+pre-commit = "^2.12.1"
+pylint = "^2.8.2"
+pytest = "^6.2.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
