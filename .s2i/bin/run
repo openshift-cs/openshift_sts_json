@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+# Include poetry's bin
+source $HOME/.poetry/env
+
+echo "---> Serving application with gunicorn/uvicorn (backend.server:app) ..."
+cd src
+PYTHONPATH="$HOME" exec poetry run gunicorn -k "uvicorn.workers.UvicornWorker" --config "uvicorn_conf.py" "src.server:app"

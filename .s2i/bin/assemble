@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+shopt -s dotglob
+echo "---> Installing application source ..."
+# force the mv not to fail
+mv -f /tmp/src/* "$HOME" || true
+
+# set permissions for any installed artifacts
+fix-permissions /opt/app-root -P
+
+echo "---> Installing poetry packaging tool ..."
+curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+
+# Include poetry's bin
+source $HOME/.poetry/env
+echo "---> Installing dependencies via poetry ..."
+poetry install
+
+# set permissions for any installed artifacts
+fix-permissions /opt/app-root -P

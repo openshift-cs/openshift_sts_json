@@ -32,6 +32,16 @@ app = FastAPI(
 # Add app routers
 app.include_router(sts_router.router)
 
+
+###
+# Health endpoint
+###
+@app.get("/health", include_in_schema=False)
+def get_health():
+    """Provide static endpoint for health checks"""
+    return {"msg": "OK"}
+
+
 # Wrap the ASGI app with a Sentry watcher
 sentry_sdk.init(dsn=SENTRY_DSN)
 app = SentryAsgiMiddleware(app)

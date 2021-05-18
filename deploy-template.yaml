@@ -1,0 +1,256 @@
+---
+kind: "Template"
+apiVersion: "template.openshift.io/v1"
+metadata:
+  name: "openshift-sts-deploy-template"
+  annotations:
+    openshift.io/display-name: "Deploy the OpenShift STS JSON generator to OpenShift"
+    tags: "python"
+    iconClass: "icon-shadowman"
+    template.openshift.io/provider-display-name: "Red Hat, Inc."
+message: "The following service(s) have been created in your project: ${NAME}."
+labels:
+  template: "openshift-sts-deploy-template"
+objects:
+  - kind: "Service"
+    apiVersion: "v1"
+    metadata:
+      name: "${NAME}"
+      annotations:
+        description: "Exposes and load balances the application pods"
+      labels:
+        app: "${NAME}"
+    spec:
+      ports:
+        - name: "http"
+          port: 8080
+          targetPort: 8080
+      selector:
+        name: "${NAME}"
+
+  - kind: "Route"
+    apiVersion: "route.openshift.io/v1"
+    metadata:
+      annotations:
+        kubernetes.io/tls-acme: "true"
+      name: "${NAME}"
+      labels:
+        app: "${NAME}"
+    spec:
+      host: "${APPLICATION_DOMAIN}"
+      to:
+        kind: "Service"
+        name: "${NAME}"
+        weight: 1
+      tls:
+        insecureEdgeTerminationPolicy: Redirect
+        termination: edge
+
+  - kind: "ImageStream"
+    apiVersion: "image.openshift.io/v1"
+    metadata:
+      name: "python-38"
+      annotations:
+        description: "Upstream python 3.8 s2i image"
+      labels:
+        app: "${NAME}"
+    spec:
+      lookupPolicy:
+        local: false
+      tags:
+      - annotations: null
+        from:
+          kind: "DockerImage"
+          name: "registry.access.redhat.com/rhscl/python-38-rhel7"
+        generation: 0
+        importPolicy:
+          scheduled: true
+        name: "latest"
+        referencePolicy:
+          type: "Source"
+
+  - kind: "ImageStream"
+    apiVersion: "image.openshift.io/v1"
+    metadata:
+      name: "${NAME}"
+      annotations:
+        description: "Keeps track of changes in the final-${NAME} application image"
+      labels:
+        app: "${NAME}"
+
+  - kind: "BuildConfig"
+    apiVersion: "build.openshift.io/v1"
+    metadata:
+      name: "${NAME}"
+      annotations:
+        description: "Defines how to build the application for ${NAME}"
+      labels:
+        app: "${NAME}"
+    spec:
+      nodeSelector:
+      resources:
+        limits:
+          memory: 512Mi
+      source:
+        type: "Git"
+        git:
+          uri: "${SOURCE_REPOSITORY_URL}"
+          ref: "${SOURCE_REPOSITORY_REF}"
+        contextDir: "${CONTEXT_DIR}"
+      strategy:
+        type: "Source"
+        sourceStrategy:
+          incremental: true
+          from:
+            kind: "ImageStreamTag"
+            name: "python-38:latest"
+      output:
+        to:
+          kind: "ImageStreamTag"
+          name: "${NAME}:latest"
+      triggers:
+        - type: "ImageChange"
+        - type: "ConfigChange"
+        - type: "GitHub"
+          github:
+            secret: "${GITHUB_WEBHOOK_SECRET}"
+
+  - kind: "DeploymentConfig"
+    apiVersion: "apps.openshift.io/v1"
+    metadata:
+      name: "${NAME}"
+      annotations:
+        description: "Defines how to deploy ${APPLICATION_DOMAIN}"
+      labels:
+        app: "${NAME}"
+    spec:
+      strategy:
+        type: "Rolling"
+      triggers:
+        - type: "ImageChange"
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - "${NAME}"
+            from:
+              kind: "ImageStreamTag"
+              name: "${NAME}:latest"
+        - type: "ConfigChange"
+      replicas: 1
+      test: false
+      selector:
+        name: "${NAME}"
+      template:
+        metadata:
+          name: "${NAME}"
+          labels:
+            name: "${NAME}"
+            app: "${NAME}"
+        spec:
+          volumes:
+            - name: env-secrets
+              secret:
+                secretName: env-secrets
+          containers:
+            - name: "${NAME}"
+              volumeMounts:
+                - name: env-secrets
+                  mountPath: /opt/app-root/src/src/.env.local
+                  subPath: .env.local
+              ports:
+                - containerPort: 8080
+                  name: http
+              readinessProbe:
+                timeoutSeconds: 3
+                initialDelaySeconds: 5
+                httpGet:
+                  path: "/health"
+                  port: http
+                  scheme: HTTP
+              livenessProbe:
+                timeoutSeconds: 3
+                initialDelaySeconds: 10
+                httpGet:
+                  path: "/health"
+                  port: http
+                  scheme: HTTP
+              resources:
+                requests:
+                  cpu: "${CPU_REQUEST}"
+                  memory: "${MEMORY_REQUEST}"
+                limits:
+                  cpu: "${CPU_LIMIT}"
+                  memory: "${MEMORY_LIMIT}"
+
+  - kind: "HorizontalPodAutoscaler"
+    apiVersion: "autoscaling/v1"
+    metadata:
+      name: "${NAME}"
+      labels:
+        app: "${NAME}"
+    spec:
+      scaleTargetRef:
+        kind: DeploymentConfig
+        name: "${NAME}"
+        apiVersion: "v1"
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 75
+
+parameters:
+  - name: "NAME"
+    displayName: "Application name"
+    description: "The name assigned to all of the application components defined in this template."
+    required: true
+    value: "sts"
+
+  - name: "APPLICATION_DOMAIN"
+    displayName: "Application Hostname"
+    required: true
+    description: "The exposed hostname that will route to the fastAPI service."
+    value: "sts.openshift.com"
+
+  - name: "SOURCE_REPOSITORY_URL"
+    displayName: "Git Repository URL"
+    description: "The URL of the repository with your application source code."
+    required: true
+    value: "https://github.com/openshift-cs/openshift_sts_json.git"
+
+  - name: "SOURCE_REPOSITORY_REF"
+    displayName: "Git Reference"
+    description: "Set this to a branch name, tag or other ref of your repository if you are not using the default branch."
+    value: "main"
+
+  - name: "CONTEXT_DIR"
+    displayName: "Context Directory"
+    description: "Set this to the relative path to your project if it is not in the root of your repository."
+
+  - name: "CPU_REQUEST"
+    displayName: "CPU Request"
+    description: "Requested amount of cpu the PHP container will use."
+    required: true
+    value: "50m"
+
+  - name: "CPU_LIMIT"
+    displayName: "CPU Limit"
+    description: "Maximum amount of cpu the PHP container can use."
+    required: true
+    value: "500m"
+
+  - name: "MEMORY_REQUEST"
+    displayName: "Memory Request"
+    description: "Requested amount of memory the PHP container will use."
+    required: true
+    value: "100Mi"
+
+  - name: "MEMORY_LIMIT"
+    displayName: "Memory Limit"
+    description: "Maximum amount of memory the PHP container can use."
+    required: true
+    value: "512Mi"
+
+  - name: "GITHUB_WEBHOOK_SECRET"
+    displayName: "GitHub Webhook Secret"
+    description: "A secret string used to configure the GitHub webhook."
+    generate: "expression"
+    from: "[a-zA-Z0-9]{40}"
