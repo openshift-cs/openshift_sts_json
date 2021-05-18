@@ -64,7 +64,8 @@ disable=invalid-name,  # constant not in UPPER_CASE format
         missing-module-docstring,
         C0330, # conflicts with Black formatting, expects 4 extra spaces be added
         too-many-instance-attributes,  # Arbitrary limit too low
-        logging-fstring-interpolation
+        logging-fstring-interpolation,
+        abstract-class-instantiated
         # unused-import,
         # print-statement,
         # parameter-unpacking,
