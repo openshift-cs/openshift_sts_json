@@ -61,7 +61,7 @@ objects:
       - annotations: null
         from:
           kind: "DockerImage"
-          name: "registry.access.redhat.com/rhscl/python-38-rhel7"
+          name: "registry.redhat.io/rhscl/python-38-rhel7"
         generation: 0
         importPolicy:
           scheduled: true
